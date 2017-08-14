@@ -3,6 +3,7 @@ Programs/*
 # Then unignore files with extensions and other specifics
 !Programs/*.c
 !Programs/Makefile
+!Programs/calc_tau.py
 
 Log_files/*
 Boxes
