@@ -8,7 +8,10 @@ utilizing output files from 21cmFAST
 
 Method:
 See Equations (6) - (9) from Liu et al. 2016
-0. z_min & z_max refer to redshfit-range of 21cmFAST box outputs
+
+The code below takes the following steps:
+Note: z_min & z_max refer to redshfit-range of 21cmFAST box outputs
+0. Run 21cmFAST over any redshift range and save density and ionization boxes
 1. Tau integral is from z=0 to z=30
 2. For low-z we assume x_HII = 1.0
     if:  x_HII(z_min) > 0.999
@@ -33,6 +36,7 @@ For the curve_interp module see: https://github.com/nkern/curve_interp
 This script assumes a cosmological parameter file "param_vals.tab"
 is present in the directory ../ and contains five LCDM parameters
 sigma8, hlittle, OmBh2, OmCh2, ns
+If this doesn't exist, it attempts to extract them from the COSMOLOGY.H file
 
 Nicholas Kern
 January, 2017
@@ -74,14 +78,25 @@ m_p		= 1.6726e-24	# Proton Mass, cgs
 mu		= 1+(Yp/4.0)*(m_He/m_H - 1)	# Mean Molecular Weight
 
 # Import Cosmological Parameters
-sigma8, hlittle, OmBh2, OmCh2, ns = np.array(np.loadtxt('../param_vals.tab', dtype=str).T[1], float)[:5]
+try:
+    sigma8, hlittle, OmBh2, OmCh2, ns = np.array(np.loadtxt('../param_vals.tab', dtype=str).T[1], float)[:5]
+    H0 = H0*hlittle
+    OmB = OmBh2 / hlittle**2
+    OmC = OmCh2 / hlittle**2
+    OmM = OmB + OmC
+    OmL = 1.0 - OmM
 
-# Convert Cosmological Parameters
-H0 = H0*hlittle
-OmB = OmBh2 / hlittle**2
-OmC = OmCh2 / hlittle**2
-OmM = OmB + OmC
-OmL = 1.0 - OmM
+except IOError:
+    with open("../Parameter_files/COSMOLOGY.H","r") as f:
+        lines = f.readlines()
+    sigma8  = float(fnmatch.filter(lines, "*#define SIGMA8*")[0].split('(')[2].split(')')[0])
+    hlittle = float(fnmatch.filter(lines, "*#define hlittle*")[0].split('(')[2].split(')')[0])
+    OmB     = float(fnmatch.filter(lines, "*#define OMb*")[0].split('(')[2].split(')')[0])
+    OmC     = float(fnmatch.filter(lines, "*#define OMc*")[0].split('(')[2].split(')')[0])
+    ns      = float(fnmatch.filter(lines, "*#define POWER_INDEX*")[0].split('(')[2].split(')')[0]) 
+    H0      = hlittle * H0
+    OmM     = OmB + OmC
+    OmL     = 1.0 - OmM
 
 # Functions
 def loadfile(fname, dtype=np.float32, shape=None):
@@ -246,7 +261,7 @@ tau_z = curve_interp(z, z_arr, tau[:,np.newaxis]).ravel()
 
 # Plot
 fig=mp.figure(figsize=(5,5))
-fig.subplots_adjust(hspace=0.0)
+fig.subplots_adjust(hspace=0.1)
 
 ax1 = fig.add_subplot(211)
 ax1.set_xlim(0,35)
@@ -264,7 +279,8 @@ ax2.set_xlabel(r'$z$',fontsize=18)
 ax2.set_ylabel(r'$\tau(z)$', fontsize=18)
 ax2.grid(True)
 ax2.plot(z_arr, tau, 'g', linewidth=2, alpha=0.75)
-ax2.annotate(r'$\tau='+str(np.round(tau[-1],3))+'$', fontsize=18, xy=(0.05,0.8), xycoords='axes fraction')
+ax2.annotate(r'$\tau='+str(np.round(tau[-1],3))+'$', fontsize=18, xy=(0.05,0.8),
+                xycoords='axes fraction', bbox=dict(boxstyle='round', fc='w', alpha=0.8))
 
 fig.savefig('../tau.png', dpi=200, bbox_inches='tight')
 mp.close()
