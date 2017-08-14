@@ -13,9 +13,10 @@
 /* COSMOLOGICAL PARAMETERS */
 #define SIGMA8 (float) (0.815) // rms mass fluctuation on 8/hlittle Mpc scales at z=0
 #define hlittle (float) (0.678) // little hubble h
-#define OMm  (float) (0.308) // at z=0
-#define OMl  (float) (1.0-OMm) // at z=0
 #define OMb  (float) ((0.02226/hlittle)/hlittle) // at z=0
+#define OMc  (float) (0.259) // at z=0
+#define OMm  (float) (OMb + OMc) // at z=0
+#define OMl  (float) (1.0-OMm) // at z=0
 #define OMn  (float) (0.0)
 #define OMk  (float) (0.0)
 #define OMr  (float) (8.6e-5)
