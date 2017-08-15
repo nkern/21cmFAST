@@ -10,22 +10,29 @@ Method:
 See Equations (6) - (9) from Liu et al. 2016
 
 The code below takes the following steps:
-Note: z_min & z_max refer to redshfit-range of 21cmFAST box outputs
+Note: z_min & z_max refer to the redshift range of 21cmFAST box outputs
 0. Run 21cmFAST over any redshift range and save density and ionization boxes
 1. Tau integral is from z=0 to z=30
-2. For low-z we assume x_HII = 1.0
-    if:  x_HII(z_min) > 0.999
-    else: we fit a tanh function to x_HII at lowest 2 points in redshift
-    and extrapolate down in redshift to x_HII(z)~0.999, below which we assume x_HII = 1.0
+2. For low-z
+    if x_HII(z_min) > 0.999:
+        we assume x_HII = 1.0
+    else:
+        we fit a tanh function to x_HII at lowest 2 points in redshift
+        and extrapolate down in redshift to x_HII(z)~0.999, below which we assume x_HII = 1.0
 3. In the range z_min < z < z_max, we start using the full x_HII and delta_b box outputs from 21cmFAST
-    to get <x_HII * (1+delta_b)> and use equations (6) - (9) in Liu et al. 2016
+    to get spatially averaged <x_HII * (1+delta_b)> and use equations (6) - (9) in Liu et al. 2016
     The tau integral uses a higher redshift resolution than the box outputs of 21cmFAST, so we interpolate
     the value of <x_HII*(1+delta_b)> in between box outputs using a second-order polynomial to
-    nearest neighbor points in redshift.
+    nearest neighbor points of 21cmFAST output redshifts.
 4. For high-z we assume x_HII = 0.0 if x_HII(z_max) < 0.001 or
 	we fit a tanh function to x_HII at the highest 2 points in redshift and extrapolate
     up in redshift to x_HII(z)~0.001, above which we assume x_HII = 0.0
 5. We model Helium ionization as a step function with x_HeIII(z<3) = 1.0 and x_HeIII(z>3) = 0.0
+
+Results:
+1) ../tau.png image
+2) ../tau_model.tab text file which is our model for tau and ionized fraction across redshift
+3) ../x_HII.tab text file which contains 21cmFAST output of spatially averaged, density-weighted ionized fraction
 
 Dependencies include:
 - scipy
@@ -51,7 +58,7 @@ import argparse
 import sys
 import fnmatch
 from scipy.optimize import leastsq
-from scipy.integrate import trapz
+from scipy.integrate import simps
 from curve_interp import curve_interp
 from matplotlib import rc
 rc('text', usetex=True)
@@ -253,8 +260,8 @@ avg_x_HII_1_deltab[np.where(avg_x_HII_1_deltab>1)] = 1.0
 tau = np.zeros(len(z_arr))
 avg_ne = ne_avg(z_arr, avg_x_HII_1_deltab, avg_x_HeIII_1_deltab)
 dldz = dl_dz(z_arr)
-for i in range(len(z_arr)):
-	tau[i] = sig_T * trapz(avg_ne[:i]*dldz[:i], x=z_arr[:i], dx=dz)
+for i in range(1,len(z_arr)):
+    tau[i] = sig_T * simps(avg_ne[:i]*dldz[:i], x=z_arr[:i], dx=dz)
 
 # Interpolate back to z
 tau_z = curve_interp(z, z_arr, tau[:,np.newaxis]).ravel()
@@ -279,7 +286,7 @@ ax2.set_xlabel(r'$z$',fontsize=18)
 ax2.set_ylabel(r'$\tau(z)$', fontsize=18)
 ax2.grid(True)
 ax2.plot(z_arr, tau, 'g', linewidth=2, alpha=0.75)
-ax2.annotate(r'$\tau='+str(np.round(tau[-1],3))+'$', fontsize=18, xy=(0.05,0.8),
+ax2.annotate(r'$\tau='+str(np.round(tau[-1],4))+'$', fontsize=18, xy=(0.05,0.8),
                 xycoords='axes fraction', bbox=dict(boxstyle='round', fc='w', alpha=0.8))
 
 fig.savefig('../tau.png', dpi=200, bbox_inches='tight')
@@ -289,18 +296,9 @@ mp.close()
 tau_z = curve_interp(z, z_arr, tau[:,np.newaxis]).ravel()
 
 # Write to file
-with open('../tau.tab', 'w') as f:
-	f.write('#z, tau, avg_x_HII_1_deltab \n')
-	for i in range(len(z)):
-		f.write(str(z[i]) + '\t' + str(tau_z[i]) + '\t' + str(avg_x_HII_1_deltab_output[i]) + '\n')
+np.savetxt('../x_HII.tab', np.vstack([z, avg_x_HII_1_deltab_output]).T, fmt='%8.5f', delimiter='\t',
+            header='z\t <x_HII*(1+delta_b)>')
 
-# Append global_params.tab
-if os.path.isfile('../global_params.tab') == True:
-	gp_data = np.loadtxt('../global_params.tab')
-	tau_gp = curve_interp(gp_data.T[0], z_arr, tau[:, np.newaxis]).ravel()
-
-	with open('../global_params.tab', 'w') as f:
-		f.write('#z\t nf\t aveTb\t Ts\t Tk\t Q\t tau\n')
-		for i in range(len(gp_data.T[0])):
-			f.write(str(gp_data[i][0])+'\t'+str(gp_data[i][1])+'\t'+str(gp_data[i][2])+'\t'+str(gp_data[i][3])+'\t'+str(gp_data[i][4])+'\t'+str(gp_data[i][5])+'\t'+str(tau_gp[i])+'\n')
+# write high-z resolution tau_model
+np.savetxt('../tau_model.tab', np.vstack([z_arr, tau, avg_x_HII_1_deltab]).T, fmt='%8.5f', delimiter='\t', header='z\t tau\t <x_HII*(1+delta_b)>')
 
