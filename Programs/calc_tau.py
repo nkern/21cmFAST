@@ -58,7 +58,7 @@ import argparse
 import sys
 import fnmatch
 from scipy.optimize import leastsq
-from scipy.integrate import simps
+from scipy.integrate import trapz
 from curve_interp import curve_interp
 from matplotlib import rc
 rc('text', usetex=True)
@@ -261,7 +261,7 @@ tau = np.zeros(len(z_arr))
 avg_ne = ne_avg(z_arr, avg_x_HII_1_deltab, avg_x_HeIII_1_deltab)
 dldz = dl_dz(z_arr)
 for i in range(1,len(z_arr)):
-    tau[i] = sig_T * simps(avg_ne[:i]*dldz[:i], x=z_arr[:i], dx=dz)
+    tau[i] = sig_T * trapz(avg_ne[:i]*dldz[:i], x=z_arr[:i], dx=dz)
 
 # Interpolate back to z
 tau_z = curve_interp(z, z_arr, tau[:,np.newaxis]).ravel()
