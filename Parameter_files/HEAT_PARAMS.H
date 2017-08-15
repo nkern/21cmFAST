@@ -13,16 +13,42 @@ NOTE:  We encourage the user to perform their own convergance tests if modifying
 
 
 /*
-  Efficiency parameter corresponding to the number of x-ray photons per
-  solar mass in stars, which escape the galaxy.
+  X-ray heating efficiency (f_X)
+  X_RAY_EFF_FACTOR = 1.0 yields
+  N_X = 0.1 when F_STAR = 0.1 and
+  MEAN_MOL_WEIGHT = 2.02
+  where N_X is # of xray photons produced
+  per stellar baryon
 */
-#define ZETA_X (double) (2.0e56) // 2e56 ~ 0.3 X-ray photons per stellar baryon
+#define X_RAY_EFF_FACTOR (double) (1.0)
+
+
+/*
+  Mass of proton in solar masses
+*/
+#define MP_MSUN (double) (8.4089382e-58)
+
+
+/*
+  Mean molecular weight of stellar baryons
+  Fiducial of 2.02 calibrated such that when ZETA_X = 2e56,
+  N_X => 0.34, where N_X = ZETA_X * MEAN_MOL_WEIGHT * MP_MSUN
+*/
+#define MEAN_MOL_WEIGHT (float) (2.02)
 
 
 /*
   The fraction of baryons converted to stars
 */
-#define F_STAR (double) (0.05)
+#define F_STAR (double) (0.10)
+
+
+/*
+  Efficiency parameter corresponding to the number of x-ray photons per
+  solar mass in stars.
+#define ZETA_X (double) (2.0e56) // 2e56 ~ 0.3 X-ray photons per stellar baryon
+*/
+#define ZETA_X (double) ((X_RAY_EFF_FACTOR / 10) * (0.1 / F_STAR) / (MEAN_MOL_WEIGHT * MP_MSUN))
 
 
 /*
