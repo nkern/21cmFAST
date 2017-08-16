@@ -18,7 +18,7 @@
 */
 #define ZSTART (12) //inclusive
 #define ZEND (6) // inclusive
-#define ZSTEP (-0.2)
+#define ZSTEP (-0.5)
 
 
 int main(int argc, char ** argv){

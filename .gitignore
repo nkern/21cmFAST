@@ -4,6 +4,7 @@ Programs/*
 !Programs/*.c
 !Programs/Makefile
 !Programs/calc_tau.py
+!Programs/grid_helper.py
 
 Log_files/*
 Boxes
