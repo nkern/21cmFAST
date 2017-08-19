@@ -36,9 +36,6 @@ Results:
 
 Dependencies include:
 - scipy
-- curve_interp
-
-For the curve_interp module see: https://github.com/nkern/curve_interp
 
 This script assumes a cosmological parameter file "param_vals.tab"
 is present in the directory ../ and contains five LCDM parameters
@@ -59,7 +56,6 @@ import sys
 import fnmatch
 from scipy.optimize import leastsq
 from scipy.integrate import trapz
-from curve_interp import curve_interp
 from matplotlib import rc
 rc('text', usetex=True)
 
@@ -166,7 +162,21 @@ rho_files	= np.array(map(lambda x: '../Boxes/'+x, sorted(fnmatch.filter(os.listd
 ion_files	= np.array(map(lambda x: '../Boxes/'+x, sorted(fnmatch.filter(os.listdir('../Boxes'), 'xH_nohalos_z*'))))
 
 # Extract redshifts
-z = np.array(map(lambda x: float(x.split('_')[3][1:]), rho_files))
+rho_z = np.array(map(lambda x: float(x.split('_')[3][1:]), rho_files))
+ion_z = np.array(map(lambda x: float(x.split('_')[2][1:]), ion_files))
+
+# Ensure they are equal in length, if not than N_ion will be greater than N_rho
+N_rho = len(rho_z)
+N_ion = len(ion_z)
+if N_rho < N_ion:
+    select = np.ones(N_rho, dtype=bool)
+    for i in range(N_rho):
+        if rho_z[i] not in ion_z:
+            select[i] = False
+    rho_files = rho_files[select]
+    rho_z = rho_z[select] 
+
+z = rho_z
 
 # Calculate density weighted x_HII
 avg_x_HII_1_deltab_output = []
@@ -250,7 +260,7 @@ else:
     avg_x_HII_1_deltab[np.where(z_arr>z[-1])] = 0.0
 
 # Assign intermediate redshifts by interpolating 21cmFAST data using 2nd order polynomial
-avg_x_HII_1_deltab[np.where((z_arr>z[0])&(z_arr<=z[-1]))] = curve_interp(z_arr[np.where((z_arr>z[0])&(z_arr<=z[-1]))], z, avg_x_HII_1_deltab_output[:,np.newaxis], n=3, degree=2)
+avg_x_HII_1_deltab[np.where((z_arr>z[0])&(z_arr<=z[-1]))] = np.interp(z_arr[np.where((z_arr>z[0])&(z_arr<=z[-1]))], z, avg_x_HII_1_deltab_output)
 
 # Remove bad predictions
 avg_x_HII_1_deltab[np.where(avg_x_HII_1_deltab<0)] = 0.0
@@ -264,7 +274,7 @@ for i in range(1,len(z_arr)):
     tau[i] = sig_T * trapz(avg_ne[:i]*dldz[:i], x=z_arr[:i], dx=dz)
 
 # Interpolate back to z
-tau_z = curve_interp(z, z_arr, tau[:,np.newaxis]).ravel()
+tau_z = np.interp(z, z_arr, tau)
 
 # Plot
 fig=mp.figure(figsize=(5,5))
@@ -293,7 +303,7 @@ fig.savefig('../tau.png', dpi=200, bbox_inches='tight')
 mp.close()
 
 # Interpolate back to z
-tau_z = curve_interp(z, z_arr, tau[:,np.newaxis]).ravel()
+tau_z = np.interp(z, z_arr, tau)
 
 # Write to file
 np.savetxt('../x_HII.tab', np.vstack([z, avg_x_HII_1_deltab_output]).T, fmt='%8.5f', delimiter='\t',
