@@ -65,7 +65,7 @@ parser.add_argument('--overwrite', dest='overwrite', action='store_true', help='
 args = parser.parse_args()
 overwrite = args.overwrite
 
-if os.path.isfile('../tau.tab') == True and overwrite == False:
+if os.path.isfile('../tau_model.tab') == True and overwrite == False:
 	print "Existing Tau data exists, not overwriting..."
 	sys.exit(0)
 
