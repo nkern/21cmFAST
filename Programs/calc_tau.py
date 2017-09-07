@@ -17,7 +17,7 @@ Note: z_min & z_max refer to the redshift range of 21cmFAST box outputs
     if x_HII(z_min) > 0.999:
         we assume x_HII = 1.0
     else:
-        we fit a tanh function to x_HII at lowest 2 points in redshift
+        we fit a quadratic and/or tanh function to x_HII at lowest 3 and/or 2 points in redshift
         and extrapolate down in redshift to x_HII(z)~0.999, below which we assume x_HII = 1.0
 3. In the range z_min < z < z_max, we start using the full x_HII and delta_b box outputs from 21cmFAST
     to get spatially averaged <x_HII * (1+delta_b)> and use equations (6) - (9) in Liu et al. 2016
@@ -217,23 +217,54 @@ def perform_leastsq(residual, coeffs, args=None):
 
 # Check lowest redshift for x_HII
 if avg_x_HII_1_deltab_output[0] <= 0.999:
-	# Extrapolate curve down to z=0 by fitting tanh
-	# Perform least squares
-	coeffs = np.array([0.5,8.0])
-	xdata = np.copy(z[:2])
-	ydata = np.copy(avg_x_HII_1_deltab_output[:2])
-	out = perform_leastsq(residual, 1*coeffs, args=(xdata, ydata, model))
+    # If avg_x_HII(z_min) < 0.85 fit a quadratic to 0.85
+    if avg_x_HII_1_deltab_output[0] < 0.85:
+        # Fit quadratic
+        fit = np.polyfit(z[:3], avg_x_HII_1_deltab_output[:3], deg=2)
+        # Generate model
+        model_y = z_arr**2 * fit[0] + z_arr * fit[1] + fit[2]
+        # Find when model = 0.85
+        z_low = z_arr[np.where(np.abs(model_y[z_arr<z[0]]-0.85)==np.abs(model_y[z_arr<z[0]]-0.85).min())[0][0]]
+        # Assign z_low < z < z_min to model
+        intermediate = np.where((z_arr > z_low) & (z_arr <= z[0]))
+        avg_x_HII_1_deltab[intermediate] = z_arr[intermediate]**2 * fit[0] + z_arr[intermediate] * fit[1] + fit[2]
 
-	# Locate when avg_x_HII_1_deltab(z) == 0.999
-	model_y = model(z_arr, out[0], out[1])
-	z_low = z_arr[np.where(np.abs(model_y-0.999)==np.abs(model_y-0.999).min())[0][0]]
+        # Extrapolate curve down to z=0 by fitting tanh
+        # Perform least squares
+        coeffs = np.array([0.5,8.0])
+        xdata = np.copy(z_arr[intermediate][:2])
+        ydata = np.copy(avg_x_HII_1_deltab[intermediate][:2])
+        out = perform_leastsq(residual, 1*coeffs, args=(xdata, ydata, model))
 
-	# Assign to 1.0
-	avg_x_HII_1_deltab[np.where(z_arr<=z_low)] = 1.0
+        # Locate when avg_x_HII_1_deltab(z) == 0.999
+        model_y = model(z_arr, out[0], out[1])
+        z_low = z_arr[np.where(np.abs(model_y-0.999)==np.abs(model_y-0.999).min())[0][0]]
 
-	# Assign z_low < z < z_min to model
-	intermediate = np.where((z_arr>z_low)&(z_arr<=z[0]))
-	avg_x_HII_1_deltab[intermediate] = model(z_arr[intermediate], out[0], out[1])
+        # Assign to 1.0
+        avg_x_HII_1_deltab[np.where(z_arr <= z_low)] = 1.0
+
+        # Assign z_low < z < z_min to model
+        intermediate = np.where((z_arr>z_low)&(z_arr<=z_arr[intermediate][0]))
+        avg_x_HII_1_deltab[intermediate] = model(z_arr[intermediate], out[0], out[1])
+
+    else:
+        # Extrapolate curve down to z=0 by fitting tanh
+        # Perform least squares
+        coeffs = np.array([0.5,8.0])
+        xdata = np.copy(z[:2])
+        ydata = np.copy(avg_x_HII_1_deltab_output[:2])
+        out = perform_leastsq(residual, 1*coeffs, args=(xdata, ydata, model))
+
+        # Locate when avg_x_HII_1_deltab(z) == 0.999
+        model_y = model(z_arr, out[0], out[1])
+        z_low = z_arr[np.where(np.abs(model_y-0.999)==np.abs(model_y-0.999).min())[0][0]]
+
+        # Assign to 1.0
+        avg_x_HII_1_deltab[np.where(z_arr<=z_low)] = 1.0
+
+        # Assign z_low < z < z_min to model
+        intermediate = np.where((z_arr>z_low)&(z_arr<=z[0]))
+        avg_x_HII_1_deltab[intermediate] = model(z_arr[intermediate], out[0], out[1])
 
 else:
 	avg_x_HII_1_deltab[np.where(z_arr<=z[0])] = 1.0
@@ -296,7 +327,7 @@ ax2.set_xlabel(r'$z$',fontsize=18)
 ax2.set_ylabel(r'$\tau(z)$', fontsize=18)
 ax2.grid(True)
 ax2.plot(z_arr, tau, 'g', linewidth=2, alpha=0.75)
-ax2.annotate(r'$\tau='+str(np.round(tau[-1],4))+'$', fontsize=18, xy=(0.05,0.8),
+ax2.annotate(r'$\tau=%.04f$'%tau[-1], fontsize=18, xy=(0.05,0.8),
                 xycoords='axes fraction', bbox=dict(boxstyle='round', fc='w', alpha=0.8))
 
 fig.savefig('../tau.png', dpi=200, bbox_inches='tight')
