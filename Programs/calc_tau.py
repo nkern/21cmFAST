@@ -307,6 +307,13 @@ for i in range(1,len(z_arr)):
 # Interpolate back to z
 tau_z = np.interp(z, z_arr, tau)
 
+# Write to file
+np.savetxt('../x_HII.tab', np.vstack([z, avg_x_HII_1_deltab_output]).T, fmt='%8.5f', delimiter='\t',
+            header='z\t <x_HII*(1+delta_b)>')
+
+# write high-z resolution tau_model
+np.savetxt('../tau_model.tab', np.vstack([z_arr, tau, avg_x_HII_1_deltab]).T, fmt='%8.5f', delimiter='\t', header='z\t tau\t <x_HII*(1+delta_b)>')
+
 # Plot
 fig=mp.figure(figsize=(5,5))
 fig.subplots_adjust(hspace=0.1)
@@ -332,14 +339,4 @@ ax2.annotate(r'$\tau=%.04f$'%tau[-1], fontsize=18, xy=(0.05,0.8),
 
 fig.savefig('../tau.png', dpi=200, bbox_inches='tight')
 mp.close()
-
-# Interpolate back to z
-tau_z = np.interp(z, z_arr, tau)
-
-# Write to file
-np.savetxt('../x_HII.tab', np.vstack([z, avg_x_HII_1_deltab_output]).T, fmt='%8.5f', delimiter='\t',
-            header='z\t <x_HII*(1+delta_b)>')
-
-# write high-z resolution tau_model
-np.savetxt('../tau_model.tab', np.vstack([z_arr, tau, avg_x_HII_1_deltab]).T, fmt='%8.5f', delimiter='\t', header='z\t tau\t <x_HII*(1+delta_b)>')
 
